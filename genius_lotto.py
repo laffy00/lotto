@@ -1,3 +1,43 @@
+#!/usr/bin/env python3
+# -*- coding: utf-8 -*-
+"""
+=================================================================
+    DA VINCI'S CIPHER: Quantum Lotto Decoder v1.0
+    다빈치의 암호: 양자 로또 디코더
+=================================================================
+
+© 2025 ORYNE. All Rights Reserved.
+Developed by: ORYNE Corporation
+Contact: Instagram @oryne.official
+Release Date: October 7, 2025
+Version: 1.0.0
+
+⚠️ LEGAL NOTICE:
+- This software is protected by copyright law
+- For PERSONAL USE ONLY - Commercial use prohibited
+- NO REDISTRIBUTION, MODIFICATION, or REVERSE ENGINEERING allowed
+- Unauthorized use may result in legal action
+
+🎯 DISCLAIMER:
+- This program is for ENTERTAINMENT and EDUCATIONAL purposes only
+- NO GUARANTEE of lottery winning - Use at your own risk
+- We are NOT responsible for any financial losses
+- Based on mathematical algorithms and statistical analysis
+
+🔒 TERMS OF USE:
+- Individual personal use only
+- Do not share, distribute, or upload online
+- Do not modify or reverse engineer
+- Keep this copyright notice intact
+
+🌐 DATA SOURCE:
+- Official Korea Lottery API (dhlottery.co.kr)
+- Real-time data synchronization
+- Mathematical analysis algorithms
+
+=================================================================
+"""
+
 import tkinter as tk
 from tkinter import scrolledtext
 import requests
@@ -91,6 +131,7 @@ def get_previous_predictions(target_draw):
     
     if draw_key in predictions:
         return predictions[draw_key].get('sets', [])
+    
     return None
 
 def download_single_draw(draw_num, session=None):
@@ -172,43 +213,66 @@ def download_draws_parallel(draw_numbers, progress_callback=None, max_workers=15
 # --- 천재적 분석 함수들 ---
 
 def set1_fibonacci():
-    # 피보나치 수열과 실제 데이터를 융합한 황금비 분석
+    # 동적 피보나치 수열과 실제 데이터를 융합한 황금비 분석
     if not number_counts or sum(number_counts.values()) == 0:
         return ["(데이터 없음)"]*6
+    
+    global TOTAL_DRAW
+    import random
     
     # 피보나치 수들의 출현 빈도 분석 (1~45 범위)
     fib_in_range = [f for f in FIBONACCI if f <= 45]
     fib_analysis = [(f, number_counts.get(f, 0)) for f in fib_in_range]
     
-    # 황금비(1.618) 기반 가중치 계산
-    golden_ratio = 1.618
+    # 동적 황금비 계산 (회차에 따라 미세 변동)
+    base_golden_ratio = 1.618
+    dynamic_offset = (TOTAL_DRAW % 13) * 0.001  # 0~0.012 범위의 미세 변동
+    golden_ratio = base_golden_ratio + dynamic_offset
+    
+    # 동적 중심점 계산 (23 ± 회차별 변동)
+    dynamic_center = 23 + (TOTAL_DRAW % 7) - 3  # 20~26 범위에서 변동
+    
     weighted_fib = []
     for f, count in fib_analysis:
-        # 황금비 거리에 따른 가중치
-        ratio_weight = 1 / (1 + abs(f - 23 * golden_ratio / 45))  # 23은 중앙값
+        # 동적 황금비 거리에 따른 가중치
+        ratio_weight = 1 / (1 + abs(f - dynamic_center * golden_ratio / 45))
         # 출현 빈도 정규화
         freq_weight = count / max([c for _, c in fib_analysis]) if fib_analysis else 0
-        total_weight = ratio_weight * 0.6 + freq_weight * 0.4
+        # 시간 가중치 추가
+        time_weight = (TOTAL_DRAW % 11) * (f % 5) * 0.01
+        # 랜덤 변동성 추가
+        random_factor = random.uniform(0.8, 1.2)
+        
+        total_weight = (ratio_weight * 0.5 + freq_weight * 0.3 + time_weight) * random_factor
         weighted_fib.append((f, total_weight))
     
     # 가중치 순으로 정렬하여 상위 선택
     weighted_fib.sort(key=lambda x: x[1], reverse=True)
     
     selected = []
-    # 먼저 피보나치 수에서 3-4개 선택
-    for f, _ in weighted_fib[:4]:
-        if len(selected) < 4:
+    # 동적으로 피보나치 수에서 2-5개 선택 (회차에 따라 변동)
+    fib_count = 2 + (TOTAL_DRAW % 4)  # 2~5개
+    for f, _ in weighted_fib[:fib_count]:
+        if len(selected) < fib_count:
             selected.append(f)
     
-    # 나머지는 황금비 분할점들로 채우기
-    golden_points = [int(45 * i / golden_ratio) for i in [0.382, 0.618, 1.0]]
-    for point in golden_points:
+    # 나머지는 동적 황금비 분할점들로 채우기
+    dynamic_ratios = [0.382, 0.618, 1.0]
+    # 회차별로 분할점 비율 조정
+    for i, ratio in enumerate(dynamic_ratios):
+        adjusted_ratio = ratio + (TOTAL_DRAW % 7) * 0.01 * (i + 1)
+        point = int(45 * adjusted_ratio / golden_ratio)
         if point >= 1 and point <= 45 and point not in selected and len(selected) < 6:
             selected.append(point)
     
-    # 부족하면 중간값들로 보충
+    # 부족하면 동적 중간값들로 보충
     while len(selected) < 6:
-        for n in [7, 17, 27, 37, 42]:
+        dynamic_middle = [7, 17, 27, 37, 42]
+        # 회차별로 중간값 순서 변경
+        shift = TOTAL_DRAW % len(dynamic_middle)
+        dynamic_middle = dynamic_middle[shift:] + dynamic_middle[:shift]
+        
+        for n in dynamic_middle:
             if n not in selected:
                 selected.append(n)
                 break
@@ -216,35 +280,220 @@ def set1_fibonacci():
     return sorted(selected[:6])
 
 def set2_statistical_regression():
-    # 평균보다 현저히 적게 나온 번호 6개
+    # 동적 평균회귀 이론: 최근 데이터와 전체 데이터를 조합한 예측
     if not number_counts or sum(number_counts.values()) == 0:
         return ["(데이터 없음)"]*6
     
-    # 전체 평균 계산
-    avg = sum(number_counts.values()) / len(number_counts)
+    global TOTAL_DRAW
+    import random
     
-    # 평균보다 70% 이하로 적게 나온 번호들 찾기
-    rare_numbers = []
-    for n in range(1, 46):  # 1~45 전체 번호 확인
-        count = number_counts.get(n, 0)
-        if count < avg * 0.7:
-            rare_numbers.append((n, count))
+    # 전체 평균과 최근 평균의 차이를 이용한 동적 선별
+    total_avg = sum(number_counts.values()) / len(number_counts)
+    recent_avg = sum(recent_counts.values()) / len(recent_counts) if recent_counts else total_avg
     
-    # 적게 나온 순으로 정렬
-    rare_numbers.sort(key=lambda x: x[1])
+    # 평균회귀 후보 점수 계산
+    candidates = []
+    for n in range(1, 46):
+        total_count = number_counts.get(n, 0)
+        recent_count = recent_counts.get(n, 0) if recent_counts else 0
+        
+        # 평균회귀 점수: 전체에서는 적지만 최근에는 더 적은 번호일수록 높은 점수
+        regression_score = (total_avg - total_count) + (recent_avg - recent_count) * 1.5
+        
+        # 시간 가중치: 회차 정보를 이용한 추가 점수
+        time_weight = (TOTAL_DRAW % 7) * (n % 3)  # 주기적 변동성 추가
+        
+        # 최종 점수
+        final_score = regression_score + time_weight + random.uniform(-5, 5)  # 무작위성 추가
+        candidates.append((n, final_score))
     
-    # 상위 12개 선택 후 중앙값(23) 기준으로 균형있게 배치
-    top_rare = rare_numbers[:12] if len(rare_numbers) >= 12 else rare_numbers
+    # 점수가 높은 순으로 정렬하여 상위 8개 선택
+    candidates.sort(key=lambda x: x[1], reverse=True)
+    top_candidates = [x[0] for x in candidates[:8]]
     
-    if len(top_rare) < 6:
-        # 충분하지 않으면 가장 적게 나온 번호들로 보충
-        all_by_count = sorted([(n, number_counts.get(n, 0)) for n in range(1, 46)], key=lambda x: x[1])
-        top_rare = all_by_count[:12]
+    # 8개 중에서 분산도를 고려하여 6개 최종 선택
+    selected = []
+    for num in top_candidates:
+        if len(selected) >= 6:
+            break
+        # 이미 선택된 번호와 너무 가깝지 않은 번호 우선 선택
+        if not selected or all(abs(num - s) >= 3 for s in selected):
+            selected.append(num)
     
-    # 중앙값 기준 균형 배치
-    selected = sorted([x[0] for x in top_rare], key=lambda x: (x-23)**2)[:6]
+    # 부족하면 나머지 후보에서 추가
+    for num in top_candidates:
+        if len(selected) >= 6:
+            break
+        if num not in selected:
+            selected.append(num)
     
-    # 6개 미만이면 추가 보충
+    return sorted(selected[:6])
+
+def set3_geometry():
+    # 동적 기하학적 패턴과 실제 출현 데이터의 조화
+    if not number_counts or sum(number_counts.values()) == 0:
+        return ["(데이터 없음)"]*6
+    
+    global TOTAL_DRAW
+    import random
+    
+    # 동적 7x7 그리드 매핑 (회차별로 약간씩 변동)
+    def get_dynamic_grid_pos(num):
+        offset = (TOTAL_DRAW % 3) - 1  # -1, 0, 1의 오프셋
+        return ((num - 1 + offset) // 7, (num - 1) % 7)
+    
+    # 동적 중심점 계산 (23 ± 회차별 변동)
+    dynamic_center = 23 + (TOTAL_DRAW % 5) - 2  # 21~25 범위에서 변동
+    
+    # 동적 대칭점 찾기
+    symmetry_pairs = []
+    for i in range(1, 46):
+        # 회차별로 대칭 기준점이 변동
+        symmetric = 2 * dynamic_center - i
+        if 1 <= symmetric <= 45 and i != symmetric:
+            pair_freq = number_counts.get(i, 0) + number_counts.get(symmetric, 0)
+            # 시간 가중치 추가
+            time_weight = (TOTAL_DRAW % 7) * (i % 4) * 0.1
+            # 랜덤 변동성 추가
+            random_boost = random.uniform(0.8, 1.3)
+            adjusted_freq = (pair_freq + time_weight) * random_boost
+            symmetry_pairs.append((i, symmetric, adjusted_freq))
+    
+    # 대칭성 기준으로 정렬
+    symmetry_pairs.sort(key=lambda x: x[2], reverse=True)
+    
+    selected = []
+    # 동적으로 대칭 쌍에서 선택 (회차에 따라 개수 변동)
+    pair_count = 2 + (TOTAL_DRAW % 3)  # 2~4개 쌍
+    for i, sym, freq in symmetry_pairs[:pair_count]:
+        if len(selected) < 6:
+            # 회차별로 선택 기준 변경
+            if (TOTAL_DRAW % 2) == 0:
+                # 짝수 회차: 더 자주 나온 번호 선택
+                better = i if number_counts.get(i, 0) >= number_counts.get(sym, 0) else sym
+            else:
+                # 홀수 회차: 덜 나온 번호 선택 (의외성)
+                better = i if number_counts.get(i, 0) <= number_counts.get(sym, 0) else sym
+            
+            if better not in selected:
+                selected.append(better)
+    
+    # 동적 기하학적 특별점들
+    base_geometric_points = [1, 7, 15, 23, 31, 39, 45]
+    
+    # 회차별로 특별점 변형
+    dynamic_geometric_points = []
+    for point in base_geometric_points:
+        # 회차별 변동 적용
+        variation = (TOTAL_DRAW % 9) - 4  # -4~4 범위 변동
+        new_point = point + variation
+        if 1 <= new_point <= 45:
+            dynamic_geometric_points.append(new_point)
+        else:
+            dynamic_geometric_points.append(point)  # 범위 벗어나면 원래값 유지
+    
+    # 기하학적 점들을 출현 빈도와 시간 가중치로 정렬
+    geo_with_score = []
+    for p in dynamic_geometric_points:
+        if p not in selected:
+            base_freq = number_counts.get(p, 0)
+            time_score = (TOTAL_DRAW % 11) * (p % 6) * 0.05
+            random_score = random.uniform(-2, 3)
+            total_score = base_freq + time_score + random_score
+            geo_with_score.append((p, total_score))
+    
+    geo_with_score.sort(key=lambda x: x[1], reverse=True)
+    
+    # 나머지 자리 채우기
+    for point, score in geo_with_score:
+        if len(selected) < 6:
+            selected.append(point)
+    
+    # 여전히 부족하면 동적 중간 지점들로 보충
+    if len(selected) < 6:
+        base_middle_points = [12, 18, 28, 34]
+        # 회차별로 중간점 시프트
+        shift = TOTAL_DRAW % len(base_middle_points)
+        dynamic_middle_points = base_middle_points[shift:] + base_middle_points[:shift]
+        
+        for mp in dynamic_middle_points:
+            variation = (TOTAL_DRAW % 5) - 2  # -2~2 변동
+            adjusted_mp = mp + variation
+            if 1 <= adjusted_mp <= 45 and adjusted_mp not in selected and len(selected) < 6:
+                selected.append(adjusted_mp)
+    
+    return sorted(selected[:6])
+
+def set4_quantum():
+    # 동적 양자적 확률 변동과 최근 트렌드 분석
+    if not recent_counts or sum(recent_counts.values()) == 0:
+        return ["(데이터 없음)"]*6
+    
+    global TOTAL_DRAW
+    import random
+    import math
+    
+    # 기본 핫 넘버 수집
+    base_hot_numbers = [n for n, _ in recent_counts.most_common(12)]  # 상위 12개로 확장
+    
+    # 양자적 변동성 적용
+    quantum_numbers = []
+    for num in base_hot_numbers:
+        base_score = recent_counts.get(num, 0)
+        
+        # 양자적 불확정성 점수 계산
+        uncertainty_score = random.uniform(0.5, 1.5)  # 하이젠베르크 불확정성
+        
+        # 시간 진동 (양자 진동자 모델)
+        time_oscillation = abs(math.sin((TOTAL_DRAW + num) * 0.1)) * 2
+        
+        # 최근 트렌드 가중치
+        recent_trend = 1.0
+        if len(recent_counts) >= 10:
+            # 최근 10회와 그 이전 10회 비교
+            recent_10 = sum([recent_counts.get(num, 0) for _ in range(min(10, len(recent_counts)))])
+            prev_10 = max(1, sum([recent_counts.get(num, 0) for _ in range(10, min(20, len(recent_counts)))]))
+            recent_trend = recent_10 / prev_10
+        
+        # 최종 양자 점수 계산
+        quantum_score = base_score * uncertainty_score * time_oscillation * recent_trend
+        quantum_numbers.append((num, quantum_score))
+    
+    # 양자 점수로 정렬
+    quantum_numbers.sort(key=lambda x: x[1], reverse=True)
+    
+    # 상위 8개에서 6개 선별 (분산도 고려)
+    selected = []
+    candidates = [x[0] for x in quantum_numbers[:8]]
+    
+    # 첫 번째는 최고 점수
+    if candidates:
+        selected.append(candidates[0])
+        candidates.remove(candidates[0])
+    
+    # 나머지는 분산을 고려하여 선택
+    while len(selected) < 6 and candidates:
+        best_candidate = None
+        best_spread = 0
+        
+        for candidate in candidates:
+            # 이미 선택된 번호들과의 최소 거리 계산
+            min_distance = min([abs(candidate - s) for s in selected]) if selected else 45
+            
+            if min_distance > best_spread:
+                best_spread = min_distance
+                best_candidate = candidate
+        
+        if best_candidate is not None:
+            selected.append(best_candidate)
+            candidates.remove(best_candidate)
+        else:
+            # 분산도가 같다면 양자 점수가 높은 것 선택
+            if candidates:
+                selected.append(candidates[0])
+                candidates.remove(candidates[0])
+    
+    # 부족하면 중간 범위에서 랜덤 선택
     while len(selected) < 6:
         for n in range(1, 46):
             if n not in selected:
@@ -253,128 +502,116 @@ def set2_statistical_regression():
     
     return sorted(selected[:6])
 
-def set3_geometry():
-    # 기하학적 패턴과 실제 출현 데이터의 조화
-    if not number_counts or sum(number_counts.values()) == 0:
-        return ["(데이터 없음)"]*6
-    
-    # 7x7 그리드 매핑 (1~45를 7x7 격자에 배치)
-    def get_grid_pos(num):
-        return ((num - 1) // 7, (num - 1) % 7)
-    
-    # 대칭점 찾기 (중심점 23 기준)
-    center = 23
-    symmetry_pairs = []
-    for i in range(1, 46):
-        symmetric = 2 * center - i
-        if 1 <= symmetric <= 45 and i != symmetric:
-            pair_freq = number_counts.get(i, 0) + number_counts.get(symmetric, 0)
-            symmetry_pairs.append((i, symmetric, pair_freq))
-    
-    # 대칭성 기준으로 정렬
-    symmetry_pairs.sort(key=lambda x: x[2], reverse=True)
-    
-    selected = []
-    # 가장 대칭적인 쌍에서 하나씩 선택
-    for i, sym, freq in symmetry_pairs[:3]:
-        if len(selected) < 6:
-            # 둘 중 더 자주 나온 번호 선택
-            better = i if number_counts.get(i, 0) >= number_counts.get(sym, 0) else sym
-            if better not in selected:
-                selected.append(better)
-    
-    # 기하학적 특별점들 (대각선, 모서리 등)
-    geometric_points = [
-        1,   # 좌상단 모서리
-        7,   # 우상단 모서리  
-        15,  # 대각선상의 점
-        23,  # 정중앙
-        31,  # 대각선상의 점
-        39,  # 좌하단 근처
-        45   # 우하단 모서리
-    ]
-    
-    # 기하학적 점들을 출현 빈도 순으로 정렬
-    geo_with_freq = [(p, number_counts.get(p, 0)) for p in geometric_points if p not in selected]
-    geo_with_freq.sort(key=lambda x: x[1], reverse=True)
-    
-    # 나머지 자리 채우기
-    for point, freq in geo_with_freq:
-        if len(selected) < 6:
-            selected.append(point)
-    
-    # 여전히 부족하면 중간 지점들로 보충
-    if len(selected) < 6:
-        middle_points = [12, 18, 28, 34]
-        for mp in middle_points:
-            if mp not in selected and len(selected) < 6:
-                selected.append(mp)
-    
-    return sorted(selected[:6])
-
-def set4_quantum():
-    # 최근 50회 내 출현 빈도 상위 6개
-    if not recent_counts or sum(recent_counts.values()) == 0:
-        return ["(데이터 없음)"]*6
-    
-    hot_numbers = [n for n, _ in recent_counts.most_common(6)]
-    
-    # 6개 미만이면 보충
-    while len(hot_numbers) < 6:
-        for n in range(1, 46):
-            if n not in hot_numbers:
-                hot_numbers.append(n)
-                break
-    
-    return sorted(hot_numbers[:6])
-
 def set5_grand_unification():
-    # 피보나치 중 최근 50회 최저 1개, 전체 미출현 상위 2개, 최근 50회 최다 2개, 마지막은 평균합에 가장 근접하게
+    # 동적 대통일 이론: 모든 알고리즘의 동적 융합
     if not number_counts or not recent_counts or not all_sums or sum(recent_counts.values()) == 0:
         return ["(데이터 없음)"]*6
     
+    global TOTAL_DRAW
+    import random
+    import math
+    
     try:
-        # 1. 피보나치 중 최근 50회 최저 1개
-        fib_recent = sorted(FIBONACCI, key=lambda n: recent_counts.get(n, 0))
-        fib_pick = fib_recent[0]
+        # 1. 동적 피보나치 요소 (회차별 변동)
+        fib_candidates = []
+        for f in FIBONACCI:
+            if f <= 45:
+                dynamic_score = number_counts.get(f, 0) * (1 + (TOTAL_DRAW % 7) * 0.1)
+                fib_candidates.append((f, dynamic_score))
+        fib_candidates.sort(key=lambda x: x[1])
+        fib_pick = fib_candidates[0][0] if fib_candidates else 1  # 최저 점수
         
-        # 2. 전체 미출현 상위 2개
-        rare = sorted(LOTTO_RANGE, key=lambda n: number_counts.get(n, 0))[:2]
+        # 2. 동적 미출현/저출현 번호 (회차별 기준 변동)
+        rare_threshold = (TOTAL_DRAW % 5) + 1  # 1~5 기준 변동
+        rare_candidates = []
+        for n in LOTTO_RANGE:
+            count = number_counts.get(n, 0)
+            if count <= rare_threshold:
+                # 시간 가중치 추가
+                time_bonus = (TOTAL_DRAW % n) * 0.1 if n > 0 else 0
+                random_factor = random.uniform(0.8, 1.3)
+                score = (rare_threshold - count + time_bonus) * random_factor
+                rare_candidates.append((n, score))
         
-        # 3. 최근 50회 최다 2개
-        hot = [n for n, _ in recent_counts.most_common(2)]
-        if len(hot) < 2:
-            # 충분하지 않으면 추가
-            for n in range(1, 46):
-                if n not in hot and len(hot) < 2:
-                    hot.append(n)
+        rare_candidates.sort(key=lambda x: x[1], reverse=True)
+        rare_picks = [x[0] for x in rare_candidates[:3]]  # 상위 3개
         
-        # 중복 제거
-        partial = list(set([fib_pick] + rare + hot))
+        # 3. 동적 핫 넘버 (최근 트렌드)
+        hot_count = 1 + (TOTAL_DRAW % 3)  # 1~3개 변동
+        hot_candidates = []
+        for n, count in recent_counts.most_common(6):
+            # 양자적 변동성 적용
+            uncertainty = random.uniform(0.7, 1.4)
+            dynamic_count = count * uncertainty
+            hot_candidates.append((n, dynamic_count))
         
-        # 4. 평균합에 가장 근접한 번호들로 6개 맞추기
+        hot_candidates.sort(key=lambda x: x[1], reverse=True)
+        hot_picks = [x[0] for x in hot_candidates[:hot_count]]
+        
+        # 중복 제거 및 부분 수집
+        partial = list(set([fib_pick] + rare_picks + hot_picks))
+        
+        # 4. 동적 평균합 보정
         avg_sum = int(sum(all_sums) / len(all_sums)) if all_sums else 138
-        target_sum = avg_sum - sum(partial)
+        # 회차별 평균합 변동
+        dynamic_avg_sum = avg_sum + (TOTAL_DRAW % 21) - 10  # ±10 범위 변동
+        current_sum = sum(partial)
+        target_remainder = dynamic_avg_sum - current_sum
+        needed_count = 6 - len(partial)
         
-        while len(partial) < 6:
-            candidates = [n for n in LOTTO_RANGE if n not in partial]
-            if not candidates:
-                break
-                
-            if len(partial) == 5:
-                # 마지막 번호는 평균합에 가장 가깝게
-                best = min(candidates, key=lambda x: abs(sum(partial + [x]) - avg_sum))
-            else:
-                # 중간 번호들은 균형있게 선택
-                best = min(candidates, key=lambda x: abs(x - (target_sum // (6 - len(partial)))))
+        # 5. 지능적 남은 자리 채우기
+        if needed_count > 0:
+            target_avg_per_slot = target_remainder / needed_count if needed_count > 0 else 23
             
-            partial.append(best)
+            # 가능한 후보들 점수 계산
+            candidates = []
+            for n in LOTTO_RANGE:
+                if n not in partial:
+                    # 평균합 기여도
+                    sum_fitness = 1 / (1 + abs(n - target_avg_per_slot))
+                    
+                    # 분산도 (이미 선택된 번호와의 거리)
+                    if partial:
+                        min_distance = min([abs(n - p) for p in partial])
+                        spread_score = min_distance / 45.0
+                    else:
+                        spread_score = 1.0
+                    
+                    # 통계적 균형 (전체 출현 빈도)
+                    total_freq = number_counts.get(n, 0)
+                    freq_balance = 1.0 / (1 + abs(total_freq - (sum(number_counts.values()) / len(number_counts))))
+                    
+                    # 시간적 변동성
+                    time_score = abs(math.sin((TOTAL_DRAW + n) * 0.15))
+                    
+                    # 최종 점수 (가중 평균)
+                    final_score = (sum_fitness * 0.4 + spread_score * 0.3 + 
+                                 freq_balance * 0.2 + time_score * 0.1) * random.uniform(0.9, 1.1)
+                    
+                    candidates.append((n, final_score))
+            
+            # 점수 순으로 정렬하여 선택
+            candidates.sort(key=lambda x: x[1], reverse=True)
+            
+            for candidate, score in candidates:
+                if len(partial) >= 6:
+                    break
+                partial.append(candidate)
+        
+        # 6. 최종 검증 및 보정
+        if len(partial) < 6:
+            # 응급 보충
+            for n in range(1, 46):
+                if n not in partial and len(partial) < 6:
+                    partial.append(n)
         
         return sorted(partial[:6])
         
     except Exception as e:
-        # 오류 발생시 안전한 기본값
-        return sorted([1, 8, 15, 22, 29, 36])
+        # 오류 발생시 동적 안전장치
+        import random
+        safe_nums = random.sample(range(1, 46), 6)
+        return sorted(safe_nums)
 
 # --- GUI 및 결과 출력 ---
 
@@ -392,7 +629,7 @@ def explain_set2(nums):
     if "(데이터 없음)" in str(nums):
         return "[우주 평균 회귀의 법칙]\n데이터 분석 중입니다. 잠시만 기다려주세요.\n"
     
-    return f"[우주 평균 회귀의 법칙 - 통계적 각성]\n이 수리체계 {nums}는 평균회귀(Mean Reversion) 이론과 대수의 법칙(Law of Large Numbers)에 기반합니다. 가우스 분포에서 변동성이 낮은 영역에 위치한 이 수들은, 중심극한정리(Central Limit Theorem)에 따라 장기적으로 평균으로 수렴하는 경향을 보입니다. 이는 시계열 분석에서 사용되는 AR(1) 모델의 예측 원리를 로또 데이터에 적용한 결과입니다.\n"
+    return f"[우주 평균 회귀의 법칙 - 통계적 각성]\n이 수리체계 {nums}는 동적 평균회귀 모델과 시계열 분석을 통해 도출되었습니다. 전체 출현 빈도와 최근 트렌드의 편차를 분석하여, 통계적으로 '회귀'할 가능성이 높은 번호들을 선별합니다. 각 회차마다 시간 가중치와 확률적 변동성을 적용하여 동일한 결과가 반복되지 않도록 설계된 adaptive 알고리즘입니다. 이는 금융 시장의 평균회귀 이론을 로또 데이터에 적용한 혁신적 접근법입니다.\n"
 
 def explain_set3(nums):
     if "(데이터 없음)" in str(nums):
@@ -428,7 +665,7 @@ def generate_numbers_and_explanations():
 class DaVinciLottoGUI:
     def __init__(self, root):
         self.root = root
-        self.root.title("다빈치 코드: 로또 해독기")
+        self.root.title("🎨 DA VINCI'S CIPHER: Quantum Lotto Decoder v1.0 | by ORYNE")
         self.root.geometry("760x670")
         self.root.configure(bg="#181c2b")  # 어두운 우주색
 
@@ -508,7 +745,19 @@ class DaVinciLottoGUI:
             relief=tk.FLAT, bd=0, padx=20, pady=6,
             command=self.on_refresh_data
         )
-        self.refresh_button.pack(side=tk.LEFT, padx=(0, 20), pady=0, ipadx=6, ipady=1)
+        self.refresh_button.pack(side=tk.LEFT, padx=(0, 10), pady=0, ipadx=6, ipady=1)
+
+        # 정보 버튼 추가
+        self.info_button = tk.Button(
+            self.button_frame,
+            text="ℹ️ 정보",
+            font=("Malgun Gothic", 12, "bold"),
+            bg="#4169E1", fg="white",
+            activebackground="#1E90FF", activeforeground="white",
+            relief=tk.FLAT, bd=0, padx=15, pady=6,
+            command=self.show_info_window
+        )
+        self.info_button.pack(side=tk.LEFT, padx=(0, 20), pady=0, ipadx=6, ipady=1)
 
         # 버튼 호버 효과
         def on_enter_main(e):
@@ -523,6 +772,10 @@ class DaVinciLottoGUI:
             self.refresh_button.config(bg="#8A2BE2")
         def on_leave_refresh(e):
             self.refresh_button.config(bg="#9370DB")
+        def on_enter_info(e):
+            self.info_button.config(bg="#1E90FF")
+        def on_leave_info(e):
+            self.info_button.config(bg="#4169E1")
             
         self.button.bind("<Enter>", on_enter_main)
         self.button.bind("<Leave>", on_leave_main)
@@ -530,13 +783,17 @@ class DaVinciLottoGUI:
         self.prev_button.bind("<Leave>", on_leave_prev)
         self.refresh_button.bind("<Enter>", on_enter_refresh)
         self.refresh_button.bind("<Leave>", on_leave_refresh)
+        self.info_button.bind("<Enter>", on_enter_info)
+        self.info_button.bind("<Leave>", on_leave_info)
 
         # 버튼 그림자 효과(프레임으로 간접)
-        self.button_frame.configure(highlightbackground="#FFD700", highlightcolor="#FFD700", highlightthickness=3, bd=0)
+        self.button_frame.configure(highlightbackground="#333333", highlightcolor="#333333", highlightthickness=2, bd=0)
 
         # 초기 메시지 표시를 위해 일시적으로 활성화
         self.text.config(state='normal')
-        self.text.insert(tk.END, "로또 데이터 분석 중...\n")
+        self.text.insert(tk.END, "🎨 DA VINCI'S CIPHER: Quantum Lotto Decoder v1.0\n")
+        self.text.insert(tk.END, "© 2025 ORYNE - Premium Lotto Analysis System\n\n")
+        self.text.insert(tk.END, "🔍 로또 데이터 분석 중...\n")
         
         # 캐시 정보 표시
         if os.path.exists(CACHE_FILE):
@@ -563,7 +820,7 @@ class DaVinciLottoGUI:
         global TOTAL_DRAW
         next_draw = TOTAL_DRAW + 1
         self.text.delete(1.0, tk.END)
-        self.text.insert(tk.END, f"[레오나르도 다빈치의 제{next_draw}회차 황금비 조합 예측]\n\n", ("title",))
+        self.text.insert(tk.END, f"[레오나르도 다빈치의 제{next_draw}회차 황금비 조합 예측]\n© 2025 ORYNE Quantum Analysis System\n\n", ("title",))
         
         colors = ["#FFD700", "#00FFD0", "#FF6F61", "#7C83FD", "#FFB300"]
         for i, (nums, exp) in enumerate(sets, 1):
@@ -741,7 +998,7 @@ class DaVinciLottoGUI:
         else:
             cache_info = "캐시 사용" if not missing_draws else f"병렬 다운로드 {total_downloaded}회차"
             next_draw = TOTAL_DRAW + 1
-            self.text.insert(tk.END, f"\n🎉 분석 완료! ({cache_info})\n제{next_draw}회차 예측을 위한 '황금비 조합 생성' 버튼을 눌러보세요!\n총 {success_count}회차 데이터 준비됨 ✨\n\n")
+            self.text.insert(tk.END, f"\n🎉 ORYNE 분석 완료! ({cache_info})\n제{next_draw}회차 예측을 위한 '황금비 조합 생성' 버튼을 눌러보세요!\n총 {success_count}회차 데이터 준비됨 ✨\n\n")
         
         # 데이터 로딩 완료 후 텍스트 비활성화
         self.text.config(state='disabled')
@@ -784,6 +1041,7 @@ class DaVinciLottoGUI:
             first_winner_count = data.get('firstPrzwnerCo', 0)  # 1등 당첨자 수
             
             # 결과 표시
+            self.text.insert(tk.END, f" ORYNE Quantum Analysis Report\n", ("oryne_brand",))
             self.text.insert(tk.END, f"🎰 제{latest_draw_num}회 로또 당첨번호\n\n", ("title",))
             self.text.insert(tk.END, f"📅 추첨일: {draw_date}\n\n", ("date",))
             
@@ -817,6 +1075,8 @@ class DaVinciLottoGUI:
             self.show_set_match_analysis(winning_nums, bonus_num, latest_draw_num)
             
             # 스타일 적용 - 통일된 색상 체계
+            self.text.tag_config("oryne_brand", font=("Malgun Gothic", 12, "bold"), foreground="#FFD700")  # 노란색 ORYNE 브랜드
+            self.text.tag_config("separator", font=("Consolas", 10), foreground="#666666")  # 박스 구분선
             self.text.tag_config("title", font=("Malgun Gothic", 16, "bold"), foreground="#FF6B6B")  # 밝은 레드
             self.text.tag_config("date", font=("Malgun Gothic", 12), foreground="#FFD700")
             self.text.tag_config("prize", font=("Malgun Gothic", 14, "bold"), foreground="#00FFD0")  # 당첨금만 강조
@@ -887,23 +1147,23 @@ class DaVinciLottoGUI:
                     prize_info = f"({matches}개 일치)"
                 
                 self.text.insert(tk.END, f"• {set_names[i]}: ", ("match_detail",))
+                self.text.insert(tk.END, f"{nums} → ", ("match_nums",))
                 self.text.insert(tk.END, f"{matches}개 매치{bonus_match} {prize_info}\n", (result_color,))
                 
-                # 최고 매치 기록
                 if matches > total_best_match:
                     total_best_match = matches
                     best_set_name = set_names[i]
             
-            # 최고 성과 요약
-            if total_best_match >= 3:
-                self.text.insert(tk.END, f"\n🏆 최고 성과: {best_set_name} - {total_best_match}개 매치!\n\n", ("match_result",))
-            elif total_best_match > 0:
-                self.text.insert(tk.END, f"\n📊 최고 성과: {best_set_name} - {total_best_match}개 매치\n\n", ("match_detail",))
-            else:
-                self.text.insert(tk.END, "\n💭 아쉽게도 3개 이상 매치되는 예측이 없었습니다.\n\n", ("match_detail",))
+            # 최고 성과 세트 표시
+            if total_best_match > 0:
+                self.text.insert(tk.END, f"\n🏆 최고 성과: {best_set_name} ({total_best_match}개 매치)\n\n", ("best_result",))
+            
+            # 매치 분석 스타일 정의
+            self.text.tag_config("match_nums", font=("Consolas", 11), foreground="#CCCCCC")
+            self.text.tag_config("best_result", font=("Malgun Gothic", 13, "bold"), foreground="#00FF00")
                 
         except Exception as e:
-            self.text.insert(tk.END, f"🔍 예측 분석 오류: {str(e)}\n\n", ("match_title",))
+            self.text.insert(tk.END, f"🔍 매치 분석 중 오류: {str(e)}\n\n", ("error",))
 
     def get_prize_info(self, matches, has_bonus):
         """당첨 등수 정보 반환"""
@@ -966,7 +1226,7 @@ class DaVinciLottoGUI:
         """데이터 갱신 버튼 클릭 시 실행"""
         self.text.config(state='normal')
         self.text.delete(1.0, tk.END)
-        self.text.insert(tk.END, "데이터 갱신 중...\n")
+        self.text.insert(tk.END, "🔄 ORYNE 데이터 갱신 중...\n양자 알고리즘 시동 중...\n")
         self.refresh_button.config(state='disabled', text="갱신 중...")
         self.button.config(state='disabled')
         
@@ -982,6 +1242,45 @@ class DaVinciLottoGUI:
                 ))
         
         threading.Thread(target=refresh_thread, daemon=True).start()
+    
+    def show_info_window(self):
+        """정보 버튼 클릭 시 표시할 정보 창"""
+        import tkinter.messagebox as msgbox
+        
+        info_text = """
+🎨 DA VINCI'S CIPHER: Quantum Lotto Decoder v1.0
+
+© 2025 ORYNE Corporation. All Rights Reserved.
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+
+📋 프로그램 정보:
+   • 개발사: ORYNE Corporation
+   • 버전: v1.0.0
+   • 출시일: 2025년 10월 7일
+   • 연락처: Instagram @oryne.official
+
+⚠️ 법적 고지사항:
+   • 개인 사용 전용 (상업적 이용 금지)
+   • 무단 복제, 배포, 수정 금지
+   • 저작권법에 의해 보호되는 소프트웨어
+
+🎯 면책 조항:
+   • 오락 및 교육 목적으로 제작됨
+   • 로또 당첨을 보장하지 않음
+   • 투자 손실에 대한 책임지지 않음
+   • 수학적 알고리즘 기반 분석
+
+🌐 데이터 출처:
+   • 동행복권 공식 API 사용
+   • 실시간 데이터 동기화
+   • 통계적 분석 알고리즘 적용
+
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+이 프로그램을 사용함으로써 위의 모든 조건에 
+동의하는 것으로 간주됩니다.
+        """
+        
+        msgbox.showinfo("📋 프로그램 정보", info_text)
 
 if __name__ == "__main__":
     root = tk.Tk()
