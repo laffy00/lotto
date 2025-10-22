@@ -330,97 +330,130 @@ def set2_statistical_regression():
     return sorted(selected[:6])
 
 def set3_geometry():
-    # 동적 기하학적 패턴과 실제 출현 데이터의 조화
+    # 피에르 드 페르마의 확률론을 적용한 신성 기하학 배열
     if not number_counts or sum(number_counts.values()) == 0:
         return ["(데이터 없음)"]*6
     
     global TOTAL_DRAW
     import random
+    import math
     
-    # 동적 7x7 그리드 매핑 (회차별로 약간씩 변동)
-    def get_dynamic_grid_pos(num):
-        offset = (TOTAL_DRAW % 3) - 1  # -1, 0, 1의 오프셋
-        return ((num - 1 + offset) // 7, (num - 1) % 7)
+    # 페르마의 확률론: 기댓값(Expected Value) 계산을 통한 번호 선택
+    # E(X) = Σ(x_i * P(x_i)) - 각 번호의 기댓값을 계산
     
-    # 동적 중심점 계산 (23 ± 회차별 변동)
-    dynamic_center = 23 + (TOTAL_DRAW % 5) - 2  # 21~25 범위에서 변동
+    total_draws = len(lotto_data) if lotto_data else TOTAL_DRAW
     
-    # 동적 대칭점 찾기
-    symmetry_pairs = []
-    for i in range(1, 46):
-        # 회차별로 대칭 기준점이 변동
-        symmetric = 2 * dynamic_center - i
-        if 1 <= symmetric <= 45 and i != symmetric:
-            pair_freq = number_counts.get(i, 0) + number_counts.get(symmetric, 0)
-            # 시간 가중치 추가
-            time_weight = (TOTAL_DRAW % 7) * (i % 4) * 0.1
-            # 랜덤 변동성 추가
-            random_boost = random.uniform(0.8, 1.3)
-            adjusted_freq = (pair_freq + time_weight) * random_boost
-            symmetry_pairs.append((i, symmetric, adjusted_freq))
+    # 1. 페르마의 확률적 기댓값 계산
+    fermat_expected_values = []
+    for num in range(1, 46):
+        # 출현 확률 계산
+        appearance_prob = number_counts.get(num, 0) / (total_draws * 6) if total_draws > 0 else 0
+        
+        # 최근 트렌드 확률 (페르마의 조건부 확률 개념)
+        recent_prob = recent_counts.get(num, 0) / (RECENT_DRAW * 6) if RECENT_DRAW > 0 else 0
+        
+        # 페르마의 점 분할 문제(Problem of Points) 적용
+        # 남은 게임에서 이길 확률을 고려한 공정한 분배
+        remaining_probability = (1 - appearance_prob) * (1 + recent_prob)
+        
+        # 기댓값 = 번호 * 출현확률 * 미래확률
+        expected_value = num * appearance_prob * remaining_probability
+        
+        # 동적 시간 가중치 (회차에 따른 변동성)
+        time_factor = math.sin((TOTAL_DRAW + num) * 0.1) * 0.3 + 1.0
+        
+        # 최종 페르마 점수
+        fermat_score = expected_value * time_factor
+        
+        fermat_expected_values.append((num, fermat_score, appearance_prob))
     
-    # 대칭성 기준으로 정렬
-    symmetry_pairs.sort(key=lambda x: x[2], reverse=True)
+    # 2. 기하학적 대칭성과 페르마 확률의 융합
+    # 동적 중심점 계산
+    dynamic_center = 23 + (TOTAL_DRAW % 5) - 2
+    
+    # 대칭성과 확률을 결합한 점수
+    symmetric_fermat_scores = []
+    for num, fermat_score, prob in fermat_expected_values:
+        # 중심으로부터의 기하학적 거리
+        geometric_distance = abs(num - dynamic_center)
+        
+        # 대칭 번호
+        symmetric_num = 2 * dynamic_center - num
+        
+        # 대칭성 보너스 (대칭 번호의 출현 확률 고려)
+        if 1 <= symmetric_num <= 45:
+            symmetric_prob = number_counts.get(symmetric_num, 0) / (total_draws * 6) if total_draws > 0 else 0
+            symmetry_bonus = symmetric_prob * 10
+        else:
+            symmetry_bonus = 0
+        
+        # 황금비 거리 보정 (1.618)
+        golden_distance = abs(geometric_distance - (45 / 1.618))
+        golden_ratio_factor = 1 / (1 + golden_distance * 0.1)
+        
+        # 최종 점수: 페르마 확률 + 기하학적 대칭성 + 황금비
+        final_score = (fermat_score * 0.5 + symmetry_bonus * 0.3) * golden_ratio_factor
+        
+        # 페르마의 조합론적 접근: C(n,k) 고려
+        # 번호가 선택될 수 있는 조합의 수
+        combinatorial_factor = math.comb(44, 5) / math.comb(45, 6)  # 특정 번호가 포함될 확률
+        final_score *= (1 + combinatorial_factor * 0.1)
+        
+        symmetric_fermat_scores.append((num, final_score))
+    
+    # 3. 페르마의 최소/최대 원리 적용
+    # 점수 순으로 정렬
+    symmetric_fermat_scores.sort(key=lambda x: x[1], reverse=True)
     
     selected = []
-    # 동적으로 대칭 쌍에서 선택 (회차에 따라 개수 변동)
-    pair_count = 2 + (TOTAL_DRAW % 3)  # 2~4개 쌍
-    for i, sym, freq in symmetry_pairs[:pair_count]:
-        if len(selected) < 6:
-            # 회차별로 선택 기준 변경
-            if (TOTAL_DRAW % 2) == 0:
-                # 짝수 회차: 더 자주 나온 번호 선택
-                better = i if number_counts.get(i, 0) >= number_counts.get(sym, 0) else sym
-            else:
-                # 홀수 회차: 덜 나온 번호 선택 (의외성)
-                better = i if number_counts.get(i, 0) <= number_counts.get(sym, 0) else sym
-            
-            if better not in selected:
-                selected.append(better)
+    candidates = [x[0] for x in symmetric_fermat_scores[:12]]  # 상위 12개 후보
     
-    # 동적 기하학적 특별점들
-    base_geometric_points = [1, 7, 15, 23, 31, 39, 45]
+    # 4. 분산 최적화 (페르마의 극값 문제 해법)
+    # 첫 번째는 최고 점수
+    if candidates:
+        selected.append(candidates[0])
+        candidates.remove(candidates[0])
     
-    # 회차별로 특별점 변형
-    dynamic_geometric_points = []
-    for point in base_geometric_points:
-        # 회차별 변동 적용
-        variation = (TOTAL_DRAW % 9) - 4  # -4~4 범위 변동
-        new_point = point + variation
-        if 1 <= new_point <= 45:
-            dynamic_geometric_points.append(new_point)
-        else:
-            dynamic_geometric_points.append(point)  # 범위 벗어나면 원래값 유지
-    
-    # 기하학적 점들을 출현 빈도와 시간 가중치로 정렬
-    geo_with_score = []
-    for p in dynamic_geometric_points:
-        if p not in selected:
-            base_freq = number_counts.get(p, 0)
-            time_score = (TOTAL_DRAW % 11) * (p % 6) * 0.05
-            random_score = random.uniform(-2, 3)
-            total_score = base_freq + time_score + random_score
-            geo_with_score.append((p, total_score))
-    
-    geo_with_score.sort(key=lambda x: x[1], reverse=True)
-    
-    # 나머지 자리 채우기
-    for point, score in geo_with_score:
-        if len(selected) < 6:
-            selected.append(point)
-    
-    # 여전히 부족하면 동적 중간 지점들로 보충
-    if len(selected) < 6:
-        base_middle_points = [12, 18, 28, 34]
-        # 회차별로 중간점 시프트
-        shift = TOTAL_DRAW % len(base_middle_points)
-        dynamic_middle_points = base_middle_points[shift:] + base_middle_points[:shift]
+    # 나머지는 분산을 최대화하면서 선택 (페르마의 최적화 이론)
+    while len(selected) < 6 and candidates:
+        best_candidate = None
+        best_metric = -float('inf')
         
-        for mp in dynamic_middle_points:
-            variation = (TOTAL_DRAW % 5) - 2  # -2~2 변동
-            adjusted_mp = mp + variation
-            if 1 <= adjusted_mp <= 45 and adjusted_mp not in selected and len(selected) < 6:
-                selected.append(adjusted_mp)
+        for candidate in candidates:
+            # 이미 선택된 번호들과의 평균 거리
+            avg_distance = sum(abs(candidate - s) for s in selected) / len(selected)
+            
+            # 페르마 점수 유지
+            fermat_value = next((score for num, score in symmetric_fermat_scores if num == candidate), 0)
+            
+            # 종합 메트릭: 거리 * 페르마점수
+            metric = avg_distance * math.log1p(fermat_value)
+            
+            if metric > best_metric:
+                best_metric = metric
+                best_candidate = candidate
+        
+        if best_candidate is not None:
+            selected.append(best_candidate)
+            candidates.remove(best_candidate)
+        else:
+            break
+    
+    # 5. 부족한 경우 페르마의 확률적 보충
+    if len(selected) < 6:
+        # 나머지 후보들 중 확률적으로 선택
+        remaining = [x[0] for x in symmetric_fermat_scores if x[0] not in selected]
+        while len(selected) < 6 and remaining:
+            # 확률적 가중치로 선택
+            weights = [math.exp(next((score for num, score in symmetric_fermat_scores if num == n), 0)) 
+                      for n in remaining[:10]]
+            if weights and sum(weights) > 0:
+                chosen = random.choices(remaining[:10], weights=weights, k=1)[0]
+                selected.append(chosen)
+                remaining.remove(chosen)
+            else:
+                selected.append(remaining[0])
+                remaining.pop(0)
     
     return sorted(selected[:6])
 
@@ -503,7 +536,7 @@ def set4_quantum():
     return sorted(selected[:6])
 
 def set5_grand_unification():
-    # 동적 대통일 이론: 모든 알고리즘의 동적 융합
+    # 블레즈 파스칼의 확률론과 파스칼 삼각형을 이용한 대통합 계산
     if not number_counts or not recent_counts or not all_sums or sum(recent_counts.values()) == 0:
         return ["(데이터 없음)"]*6
     
@@ -512,105 +545,180 @@ def set5_grand_unification():
     import math
     
     try:
-        # 1. 동적 피보나치 요소 (회차별 변동)
-        fib_candidates = []
-        for f in FIBONACCI:
-            if f <= 45:
-                dynamic_score = number_counts.get(f, 0) * (1 + (TOTAL_DRAW % 7) * 0.1)
-                fib_candidates.append((f, dynamic_score))
-        fib_candidates.sort(key=lambda x: x[1])
-        fib_pick = fib_candidates[0][0] if fib_candidates else 1  # 최저 점수
+        # 1. 파스칼 삼각형(Pascal's Triangle) 생성 및 적용
+        # C(n, k) = n! / (k! * (n-k)!) - 이항계수 계산
+        def pascal_coefficient(n, k):
+            """파스칼 삼각형의 이항계수 계산"""
+            if k > n or k < 0:
+                return 0
+            if k == 0 or k == n:
+                return 1
+            return math.comb(n, k)
         
-        # 2. 동적 미출현/저출현 번호 (회차별 기준 변동)
-        rare_threshold = (TOTAL_DRAW % 5) + 1  # 1~5 기준 변동
-        rare_candidates = []
-        for n in LOTTO_RANGE:
-            count = number_counts.get(n, 0)
-            if count <= rare_threshold:
-                # 시간 가중치 추가
-                time_bonus = (TOTAL_DRAW % n) * 0.1 if n > 0 else 0
-                random_factor = random.uniform(0.8, 1.3)
-                score = (rare_threshold - count + time_bonus) * random_factor
-                rare_candidates.append((n, score))
+        # 2. 파스칼의 내기 문제(Pascal's Wager) 적용
+        # 각 번호를 선택했을 때의 기댓값(Expected Value) 계산
+        total_draws = len(lotto_data) if lotto_data else TOTAL_DRAW
         
-        rare_candidates.sort(key=lambda x: x[1], reverse=True)
-        rare_picks = [x[0] for x in rare_candidates[:3]]  # 상위 3개
-        
-        # 3. 동적 핫 넘버 (최근 트렌드)
-        hot_count = 1 + (TOTAL_DRAW % 3)  # 1~3개 변동
-        hot_candidates = []
-        for n, count in recent_counts.most_common(6):
-            # 양자적 변동성 적용
-            uncertainty = random.uniform(0.7, 1.4)
-            dynamic_count = count * uncertainty
-            hot_candidates.append((n, dynamic_count))
-        
-        hot_candidates.sort(key=lambda x: x[1], reverse=True)
-        hot_picks = [x[0] for x in hot_candidates[:hot_count]]
-        
-        # 중복 제거 및 부분 수집
-        partial = list(set([fib_pick] + rare_picks + hot_picks))
-        
-        # 4. 동적 평균합 보정
-        avg_sum = int(sum(all_sums) / len(all_sums)) if all_sums else 138
-        # 회차별 평균합 변동
-        dynamic_avg_sum = avg_sum + (TOTAL_DRAW % 21) - 10  # ±10 범위 변동
-        current_sum = sum(partial)
-        target_remainder = dynamic_avg_sum - current_sum
-        needed_count = 6 - len(partial)
-        
-        # 5. 지능적 남은 자리 채우기
-        if needed_count > 0:
-            target_avg_per_slot = target_remainder / needed_count if needed_count > 0 else 23
+        pascal_scores = []
+        for num in range(1, 46):
+            # 출현 확률
+            appearance_prob = number_counts.get(num, 0) / (total_draws * 6) if total_draws > 0 else 0
             
-            # 가능한 후보들 점수 계산
-            candidates = []
-            for n in LOTTO_RANGE:
-                if n not in partial:
-                    # 평균합 기여도
-                    sum_fitness = 1 / (1 + abs(n - target_avg_per_slot))
-                    
-                    # 분산도 (이미 선택된 번호와의 거리)
-                    if partial:
-                        min_distance = min([abs(n - p) for p in partial])
-                        spread_score = min_distance / 45.0
-                    else:
-                        spread_score = 1.0
-                    
-                    # 통계적 균형 (전체 출현 빈도)
-                    total_freq = number_counts.get(n, 0)
-                    freq_balance = 1.0 / (1 + abs(total_freq - (sum(number_counts.values()) / len(number_counts))))
-                    
-                    # 시간적 변동성
-                    time_score = abs(math.sin((TOTAL_DRAW + n) * 0.15))
-                    
-                    # 최종 점수 (가중 평균)
-                    final_score = (sum_fitness * 0.4 + spread_score * 0.3 + 
-                                 freq_balance * 0.2 + time_score * 0.1) * random.uniform(0.9, 1.1)
-                    
-                    candidates.append((n, final_score))
+            # 최근 출현 확률
+            recent_prob = recent_counts.get(num, 0) / (RECENT_DRAW * 6) if RECENT_DRAW > 0 else 0
             
-            # 점수 순으로 정렬하여 선택
-            candidates.sort(key=lambda x: x[1], reverse=True)
+            # 파스칼의 기댓값 이론: E = p₁·v₁ + p₂·v₂
+            # p₁: 과거 확률, v₁: 과거 가치
+            # p₂: 최근 확률, v₂: 최근 가치 (더 높은 가중치)
+            historical_value = appearance_prob * (1 - appearance_prob)  # 분산 고려
+            recent_value = recent_prob * 2.0  # 최근 데이터에 더 높은 가치
             
-            for candidate, score in candidates:
-                if len(partial) >= 6:
-                    break
-                partial.append(candidate)
+            expected_value = historical_value * 0.4 + recent_value * 0.6
+            
+            # 3. 파스칼 삼각형의 대칭성 활용
+            # 번호의 위치(1~45)를 파스칼 삼각형 행으로 매핑
+            row = (num - 1) // 9  # 0~4 행
+            col = (num - 1) % 9   # 0~8 열
+            
+            # 해당 위치의 이항계수 계산
+            if col <= row:
+                pascal_weight = pascal_coefficient(row + 8, col) / pascal_coefficient(row + 8, row // 2)
+            else:
+                pascal_weight = 1.0
+            
+            # 4. 파스칼의 확률론적 조합
+            # C(45, 6) 중에서 특정 번호가 포함될 확률
+            total_combinations = math.comb(45, 6)
+            num_included_combinations = math.comb(44, 5)  # 특정 번호 포함 시
+            inclusion_probability = num_included_combinations / total_combinations
+            
+            # 5. 파스칼의 기하학적 확률 (Geometric Probability)
+            # 번호 분포의 균등성 고려
+            geometric_position = num / 45.0
+            geometric_prob = abs(math.sin(geometric_position * math.pi)) * abs(math.cos(geometric_position * math.pi * 2))
+            
+            # 6. 시간적 순환 가중치 (파스칼의 순환론)
+            cyclical_weight = abs(math.sin((TOTAL_DRAW + num) * 2 * math.pi / 45))
+            
+            # 7. 최종 파스칼 점수 계산
+            pascal_score = (
+                expected_value * 0.30 +           # 기댓값 이론
+                pascal_weight * 0.25 +            # 파스칼 삼각형 가중치
+                inclusion_probability * 0.20 +    # 조합론적 확률
+                geometric_prob * 0.15 +           # 기하학적 확률
+                cyclical_weight * 0.10            # 순환 가중치
+            )
+            
+            # 8. 파스칼의 변동성 추가 (Stochastic Component)
+            stochastic_factor = random.gauss(1.0, 0.15)  # 정규분포 변동
+            pascal_score *= max(0.5, min(1.5, stochastic_factor))
+            
+            pascal_scores.append((num, pascal_score))
         
-        # 6. 최종 검증 및 보정
-        if len(partial) < 6:
-            # 응급 보충
-            for n in range(1, 46):
-                if n not in partial and len(partial) < 6:
-                    partial.append(n)
+        # 점수 순으로 정렬
+        pascal_scores.sort(key=lambda x: x[1], reverse=True)
         
-        return sorted(partial[:6])
+        # 9. 파스칼의 분할 문제 해법 적용
+        # 상위 후보들 중에서 최적 조합 선택
+        top_candidates = [num for num, score in pascal_scores[:15]]
+        
+        selected = []
+        
+        # 첫 번째: 최고 점수
+        selected.append(top_candidates[0])
+        top_candidates.remove(top_candidates[0])
+        
+        # 10. 파스칼의 최적화: 분산과 기댓값의 균형
+        while len(selected) < 6 and top_candidates:
+            best_candidate = None
+            best_combined_score = -float('inf')
+            
+            for candidate in top_candidates:
+                # 파스칼 점수
+                pascal_value = next((score for num, score in pascal_scores if num == candidate), 0)
+                
+                # 분산도 (다양성)
+                if selected:
+                    variance = sum((candidate - s) ** 2 for s in selected) / len(selected)
+                    variance_score = math.sqrt(variance) / 45.0
+                else:
+                    variance_score = 1.0
+                
+                # 합계 최적화 (평균에 가까운 합)
+                current_sum = sum(selected) + candidate
+                target_sum = (sum(all_sums) / len(all_sums)) if all_sums else 138
+                sum_fitness = 1 / (1 + abs(current_sum - target_sum * (len(selected) + 1) / 6) / 10)
+                
+                # 파스칼의 가중 결합
+                combined_score = (
+                    pascal_value * 0.50 +
+                    variance_score * 0.30 +
+                    sum_fitness * 0.20
+                )
+                
+                if combined_score > best_combined_score:
+                    best_combined_score = combined_score
+                    best_candidate = candidate
+            
+            if best_candidate is not None:
+                selected.append(best_candidate)
+                top_candidates.remove(best_candidate)
+            else:
+                break
+        
+        # 11. 부족한 경우 파스칼 확률로 보충
+        if len(selected) < 6:
+            remaining = [num for num, score in pascal_scores if num not in selected]
+            # 확률적 가중 선택
+            weights = [math.exp(next((score for num, score in pascal_scores if num == n), 0) * 2) 
+                      for n in remaining[:10]]
+            
+            while len(selected) < 6 and remaining:
+                if weights and sum(weights) > 0:
+                    chosen = random.choices(remaining[:10], weights=weights[:len(remaining[:10])], k=1)[0]
+                    selected.append(chosen)
+                    remaining.remove(chosen)
+                    # 가중치 재계산
+                    weights = [math.exp(next((score for num, score in pascal_scores if num == n), 0) * 2) 
+                              for n in remaining[:10]]
+                else:
+                    selected.append(remaining[0])
+                    remaining.pop(0)
+        
+        # 12. 파스칼의 검증: 선택된 번호들의 조합론적 타당성 확인
+        final_selected = sorted(selected[:6])
+        
+        # 조합의 다양성 검증
+        if len(set(final_selected)) == 6:
+            # 구간별 분포 확인 (1-15, 16-30, 31-45)
+            low = sum(1 for n in final_selected if n <= 15)
+            mid = sum(1 for n in final_selected if 16 <= n <= 30)
+            high = sum(1 for n in final_selected if n >= 31)
+            
+            # 극단적 편중 방지 (파스칼의 균형 이론)
+            if low >= 5 or mid >= 5 or high >= 5:
+                # 재조정: 중간 범위에서 하나 추가
+                for num in range(16, 31):
+                    if num not in final_selected and mid < 3:
+                        # 가장 낮은 점수 제거하고 교체
+                        min_score_num = min(final_selected, 
+                                          key=lambda x: next((s for n, s in pascal_scores if n == x), 0))
+                        final_selected.remove(min_score_num)
+                        final_selected.append(num)
+                        final_selected = sorted(final_selected)
+                        break
+        
+        return final_selected
         
     except Exception as e:
-        # 오류 발생시 동적 안전장치
+        # 오류 발생시 파스칼 확률 기반 안전장치
         import random
-        safe_nums = random.sample(range(1, 46), 6)
+        # 정규분포 기반 선택
+        safe_nums = []
+        while len(safe_nums) < 6:
+            num = int(random.gauss(23, 10))  # 평균 23, 표준편차 10
+            if 1 <= num <= 45 and num not in safe_nums:
+                safe_nums.append(num)
         return sorted(safe_nums)
 
 # --- GUI 및 결과 출력 ---
@@ -633,19 +741,19 @@ def explain_set2(nums):
 
 def explain_set3(nums):
     if "(데이터 없음)" in str(nums):
-        return "[신성 기하학의 배열]\n기하학적 분석 중입니다. 잠시만 기다려주세요.\n"
+        return "[피에르 드 페르마의 확률론]\n기하학적 분석 중입니다. 잠시만 기다려주세요.\n"
     
     # 대칭성 분석
     center = 23
     symmetry = sum(1 for n in nums if (2*center - n) in nums or n == center)
     
-    return f"[신성 기하학의 배열 - 대칭의 미학]\n{nums}는 유클리드 기하학의 대칭성(Symmetry) 원리와 노어터(Emmy Noether)의 대칭성 정리를 기반으로 선별되었습니다. 7×7 격자 구조에서 중심점(23)을 기준으로 {symmetry}개의 대칭적 요소를 포함하며, 이는 결정학(Crystallography)에서 사용되는 점군 대칭(Point Group Symmetry) 이론과 일치합니다. 이러한 기하학적 질서는 비트루비우스가 제시한 인체 비례의 수학적 규칙성을 반영합니다.\n"
+    return f"[피에르 드 페르마의 확률론 - 기댓값과 신성 기하학]\n{nums}는 17세기 천재 수학자 피에르 드 페르마(Pierre de Fermat)의 확률론을 기반으로 계산되었습니다. 페르마의 기댓값 이론 E(X) = Σ(x_i × P(x_i))을 적용하여 각 번호의 출현 확률과 미래 가능성을 수학적으로 계산했습니다. 또한 페르마의 유명한 '점 분할 문제(Problem of Points)'의 공정한 확률 분배 원리를 사용하여, 과거 출현 빈도와 미래 예측 확률을 조화롭게 결합했습니다. 기하학적 대칭성과 황금비(φ=1.618)를 융합하여 {symmetry}개의 대칭적 요소를 포함하며, 이는 페르마의 조합론 C(n,k)와 최적화 이론이 만나 탄생한 수학적 예술작품입니다.\n"
 
 def explain_set4(nums):
     return f"[양자적 도약과 변동성]\n이 수열은 양자물리학의 비연속성(Quantum Discreteness)과 확률적 중첩(Quantum Superposition) 원리를 기반으로 선별되었습니다. {nums}는 최근 출현 데이터에서 통계적 요동(Statistical Fluctuation)을 보이는 '뜨거운' 숫자들로, 하이젠베르크의 불확정성 원리처럼 예측 불가능한 변동성을 내재합니다. 이는 무작위 과정에서 나타나는 열역학적 비평형 상태의 수학적 모델링입니다.\n"
 
 def explain_set5(nums):
-    return f"[대통일 숫자 이론]\n이 수열은 앞서 소개된 네 가지 수학적 원리(피보나치 수열, 평균회귀, 기하학적 대칭, 확률적 변동)를 통합적으로 적용한 결과입니다. {nums}는 각 알고리즘의 강점을 결합하여 에일리어스(Elias) 코딩 이론과 같이 중복된 정보를 제거하고 최적화된 숫자 조합을 추출합니다. 이는 기계학습의 앙상블 방법(Ensemble Methods)과 유사한 원리로, 여러 모델의 예측을 통합하여 더 정확한 결과를 도출합니다.\n"
+    return f"[블레즈 파스칼의 대통합 확률론]\n이 수열 {nums}는 17세기 프랑스의 천재 수학자이자 철학자 블레즈 파스칼(Blaise Pascal)의 혁명적 확률론을 집대성한 결과입니다. 파스칼 삼각형(Pascal's Triangle)의 이항계수 C(n,k)를 활용하여 각 번호의 조합론적 확률을 계산하고, 파스칼의 유명한 '내기 이론(Pascal's Wager)'에서 제시된 기댓값 공식 E = Σ(p_i × v_i)를 적용했습니다. 여기서 p_i는 각 사건의 확률, v_i는 해당 사건의 가치를 의미합니다. 또한 파스칼과 페르마가 함께 해결한 '점 분할 문제'의 공정한 분배 원리, 기하학적 확률론, 그리고 확률적 변동성(Stochastic Variation)을 모두 통합했습니다. 이는 분산과 기댓값의 최적 균형을 추구하는 파스칼의 최적화 이론이 구현된 수학적 걸작이며, 앙상블 방법론(Ensemble Methods)의 선구적 적용 사례입니다.\n"
 
 def generate_numbers_and_explanations():
     s1 = set1_fibonacci()
