@@ -232,6 +232,123 @@ st.markdown("""
     .glow-text {
         animation: glow 2s ease-in-out infinite;
     }
+    
+    /* ========== 모바일 반응형 ========== */
+    
+    /* 태블릿 (768px 이하) */
+    @media (max-width: 768px) {
+        .main .block-container {
+            padding-top: 1rem;
+            padding-bottom: 1rem;
+            padding-left: 1rem;
+            padding-right: 1rem;
+        }
+        
+        h1 {
+            font-size: 2rem !important;
+        }
+        
+        h2 {
+            font-size: 1.5rem !important;
+        }
+        
+        h3 {
+            font-size: 1.2rem !important;
+        }
+        
+        .number-ball {
+            width: 45px;
+            height: 45px;
+            font-size: 18px;
+            margin: 3px;
+        }
+        
+        .card {
+            padding: 1rem;
+            margin: 0.5rem 0;
+        }
+        
+        .stButton > button {
+            font-size: 1rem;
+            padding: 0.6rem 1.5rem;
+        }
+        
+        [data-testid="stMetricValue"] {
+            font-size: 1.5rem;
+        }
+    }
+    
+    /* 모바일 (480px 이하) */
+    @media (max-width: 480px) {
+        .main .block-container {
+            padding: 0.5rem;
+        }
+        
+        h1 {
+            font-size: 1.5rem !important;
+        }
+        
+        h2 {
+            font-size: 1.2rem !important;
+        }
+        
+        h3 {
+            font-size: 1rem !important;
+        }
+        
+        .number-ball {
+            width: 35px;
+            height: 35px;
+            font-size: 14px;
+            margin: 2px;
+        }
+        
+        .card {
+            padding: 0.8rem;
+            margin: 0.3rem 0;
+        }
+        
+        .stButton > button {
+            font-size: 0.9rem;
+            padding: 0.5rem 1rem;
+        }
+        
+        [data-testid="stMetricValue"] {
+            font-size: 1.2rem;
+        }
+        
+        [data-testid="stMetricLabel"] {
+            font-size: 0.8rem;
+        }
+        
+        /* 사이드바 폰트 크기 조정 */
+        [data-testid="stSidebar"] h1 {
+            font-size: 1.3rem !important;
+        }
+        
+        [data-testid="stSidebar"] h3 {
+            font-size: 1rem !important;
+        }
+    }
+    
+    /* 초소형 모바일 (360px 이하) */
+    @media (max-width: 360px) {
+        h1 {
+            font-size: 1.2rem !important;
+        }
+        
+        .number-ball {
+            width: 30px;
+            height: 30px;
+            font-size: 12px;
+            margin: 1px;
+        }
+        
+        .stButton > button {
+            font-size: 0.85rem;
+            padding: 0.4rem 0.8rem;
+        }
+    }
 </style>
 """, unsafe_allow_html=True)
 
