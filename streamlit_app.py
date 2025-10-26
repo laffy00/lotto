@@ -559,7 +559,8 @@ def set1_fibonacci():
     TOTAL_DRAW = st.session_state.TOTAL_DRAW
     
     import random
-    random.seed(TOTAL_DRAW * 1000 + 1)
+    # 더 큰 변화를 위해 시드 생성 방식 개선
+    random.seed((TOTAL_DRAW ** 2) * 17 + TOTAL_DRAW * 137 + 1)
     
     PHI = (1 + math.sqrt(5)) / 2
     fib_scores = {}
@@ -575,15 +576,22 @@ def set1_fibonacci():
         freq_score = st.session_state.number_counts.get(num, 0) / max(st.session_state.number_counts.values()) if st.session_state.number_counts else 0
         recent_score = st.session_state.recent_counts.get(num, 0) / (RECENT_DRAW * 6) if RECENT_DRAW > 0 else 0
         
+        # 랜덤 변동성 크게 증가 (0.5 ~ 1.5 범위)
+        random_factor = 0.5 + random.random()
+        
         total_score = base_score + phi_score * 5 + (1 - freq_score) * 3 + recent_score * 2
-        fib_scores[num] = total_score * (0.9 + random.random() * 0.2)
+        fib_scores[num] = total_score * random_factor
     
     sorted_nums = sorted(fib_scores.items(), key=lambda x: x[1], reverse=True)
     
+    # 상위 30개에서 선택하도록 범위 확대
     selected = []
-    for num, score in sorted_nums[:20]:
+    candidates = sorted_nums[:30]
+    random.shuffle(candidates)  # 후보군을 섞어서 더 다양하게
+    
+    for num, score in candidates:
         if len(selected) < 6:
-            if not selected or abs(num - selected[-1]) >= 3:
+            if not selected or abs(num - selected[-1]) >= 2:  # 간격 조건 완화
                 selected.append(num)
     
     while len(selected) < 6:
@@ -810,7 +818,8 @@ def set5_grand_unification():
     TOTAL_DRAW = st.session_state.TOTAL_DRAW
     
     import random
-    random.seed(TOTAL_DRAW * 1000 + 5)
+    # 더 큰 변화를 위해 시드 생성 방식 개선
+    random.seed((TOTAL_DRAW ** 2) * 23 + TOTAL_DRAW * 271 + 5)
     
     try:
         total_draws = len(st.session_state.lotto_data) if st.session_state.lotto_data else TOTAL_DRAW
@@ -877,60 +886,44 @@ def set5_grand_unification():
                 position_value * 10
             ) * zone_balance
             
-            luck_factor = abs(math.sin((TOTAL_DRAW + num) * math.pi / 23)) * 0.3 + 0.85
+            luck_factor = abs(math.sin((TOTAL_DRAW + num) * math.pi / 23)) * 0.5 + 0.75
             total_value *= luck_factor
             
-            stochastic = random.gauss(1.0, 0.12)
-            total_value *= max(0.7, min(1.3, stochastic))
+            # 랜덤 변동성 크게 증가 (표준편차 0.25로 증가)
+            stochastic = random.gauss(1.0, 0.25)
+            total_value *= max(0.5, min(1.5, stochastic))
             
             zone_scores.append((num, total_value, zone))
         
         zone_scores.sort(key=lambda x: x[1], reverse=True)
+        
+        # 상위 35개로 후보군 확대
+        top_candidates = [(num, score, zone) for num, score, zone in zone_scores[:35]]
+        random.shuffle(top_candidates)  # 후보를 섞어서 다양성 증가
+        
         selected = []
-        top_candidates = [(num, score, zone) for num, score, zone in zone_scores[:24]]
         
         low_pool = [x for x in top_candidates if x[2] == "low"]
         mid_pool = [x for x in top_candidates if x[2] == "mid"]
         high_pool = [x for x in top_candidates if x[2] == "high"]
         
-        if low_pool:
-            selected.append(low_pool[0][0])
-        if mid_pool:
-            selected.append(mid_pool[0][0])
-        if high_pool:
-            selected.append(high_pool[0][0])
+        # 각 구간에서 랜덤하게 선택
+        if low_pool and random.random() > 0.3:
+            selected.append(random.choice(low_pool[:5])[0])
+        if mid_pool and random.random() > 0.3:
+            selected.append(random.choice(mid_pool[:5])[0])
+        if high_pool and random.random() > 0.3:
+            selected.append(random.choice(high_pool[:5])[0])
         
         remaining_candidates = [x for x in top_candidates if x[0] not in selected]
         
+        # 나머지 선택 시 더 큰 랜덤성 부여
         while len(selected) < 6 and remaining_candidates:
-            best_num = None
-            best_metric = -float('inf')
-            
-            for num, score, zone in remaining_candidates:
-                value_score = score
-                
-                if selected:
-                    min_distance = min(abs(num - s) for s in selected)
-                    diversity_score = min_distance / 45.0
-                else:
-                    diversity_score = 1.0
-                
-                current_sum = sum(selected) + num
-                target_avg = (sum(st.session_state.all_sums) / len(st.session_state.all_sums)) if st.session_state.all_sums else 138
-                sum_target = target_avg * (len(selected) + 1) / 6
-                sum_fitness = 1 / (1 + abs(current_sum - sum_target) / 15)
-                
-                combined_metric = value_score * 0.6 + diversity_score * 0.3 + sum_fitness * 0.1
-                
-                if combined_metric > best_metric:
-                    best_metric = combined_metric
-                    best_num = num
-            
-            if best_num is not None:
-                selected.append(best_num)
-                remaining_candidates = [x for x in remaining_candidates if x[0] != best_num]
-            else:
-                break
+            # 상위 후보 중에서 랜덤하게 선택
+            choice_pool = remaining_candidates[:10] if len(remaining_candidates) >= 10 else remaining_candidates
+            chosen = random.choice(choice_pool)
+            selected.append(chosen[0])
+            remaining_candidates = [x for x in remaining_candidates if x[0] != chosen[0]]
         
         if len(selected) < 6:
             for num, score, zone in zone_scores:
@@ -1441,11 +1434,11 @@ def main():
                     
                     if past_predictions:
                         set_names = [
-                            "황금비 조합 (세트1)",
-                            "통계적 회귀 (세트2)",
-                            "신성 기하학 (세트3)",
-                            "양자적 에너지 (세트4)",
-                            "대통일 이론 (세트5)"
+                            "세트 1: 황금 비율의 서명",
+                            "세트 2: 우주 평균 회귀의 법칙",
+                            "세트 3: 피에르 드 페르마의 확률론",
+                            "세트 4: 콜모고로프의 공리적 확률론",
+                            "세트 5: 블레즈 파스칼의 도박 문제 해결"
                         ]
                         
                         set_icons = ["🎨", "📊", "🔮", "⚛️", "🎲"]
